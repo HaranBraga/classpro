@@ -20,5 +20,5 @@ services:
 
 networks:
   default:
-    name: easypanel
+    name: despesa-facil-db
     external: true
