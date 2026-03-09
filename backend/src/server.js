@@ -188,6 +188,6 @@ app.listen(PORT, async () => {
     try {
         await initDb();
     } catch (err) {
-        console.error('❌ Erro ao inicializar banco:', err.message);
+        console.error('❌ Erro ao inicializar banco (Backend continuará rodando aguardando DB):', err.message);
     }
 });
