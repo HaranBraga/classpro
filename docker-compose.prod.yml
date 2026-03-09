@@ -17,8 +17,3 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-
-networks:
-  default:
-    name: easypanel
-    external: true
