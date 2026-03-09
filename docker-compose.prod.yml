@@ -1,6 +1,6 @@
 services:
   backend:
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile.prod
     restart: unless-stopped
@@ -15,7 +15,5 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
     restart: unless-stopped
-    ports:
-      - "80:80"
     depends_on:
       - backend
