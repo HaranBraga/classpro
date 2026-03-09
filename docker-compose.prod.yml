@@ -8,7 +8,8 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - PORT=3000
-    # A rede padrão do compose já permite que o frontend chame este serviço por 'http://backend:3000'
+    networks:
+      - easypanel
 
   frontend:
     build:
@@ -17,3 +18,9 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    networks:
+      - easypanel
+
+networks:
+  easypanel:
+    external: true
