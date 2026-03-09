@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClassPro Admin — Painel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container header-inner">
+            <div class="logo">
+                <div class="logo-icon">CP</div>
+                <span class="logo-text">Class<strong>Pro</strong> <span class="logo-badge">Admin</span></span>
+            </div>
+            <a href="index.html" class="btn btn-ghost btn-sm">← Consulta Pública</a>
+        </div>
+    </header>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="auth-screen">
+        <div class="auth-card">
+            <div class="auth-icon">🔐</div>
+            <h2 class="auth-title">Acesso Administrativo</h2>
+            <p class="auth-subtitle">Entre com suas credenciais para gerenciar a tabela NCM.</p>
+
+            <div id="login-error" class="error-card" style="display:none">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <span id="login-error-msg"></span>
+            </div>
+
+            <form id="login-form" novalidate>
+                <div class="form-group">
+                    <label class="form-label" for="username">Usuário</label>
+                    <input id="username" class="form-input" type="text" placeholder="admin" autocomplete="username" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="password">Senha</label>
+                    <input id="password" class="form-input" type="password" placeholder="••••••••"
+                        autocomplete="current-password" />
+                </div>
+                <button type="submit" class="btn btn-primary btn-full" id="btn-login">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="admin-panel" style="display:none">
+        <section class="hero hero-sm">
+            <div class="container">
+                <div class="hero-badge">⚙️ Administração</div>
+                <h1 class="hero-title">Painel <span class="text-accent">Admin</span></h1>
+                <p class="hero-subtitle">Gerencie a tabela de classificação tributária NCM.</p>
+            </div>
+        </section>
+
+        <main class="main">
+            <div class="container">
+                <div class="admin-grid">
+
+                    <!-- Stats Card -->
+                    <div class="stats-card">
+                        <div class="stats-icon">📊</div>
+                        <div class="stats-body">
+                            <div class="stats-label">Registros no Banco</div>
+                            <div class="stats-value" id="stats-total">—</div>
+                        </div>
+                        <button class="btn btn-ghost btn-sm" id="btn-refresh-stats">↻ Atualizar</button>
+                    </div>
+
+                    <!-- Upload Card -->
+                    <div class="search-card upload-card">
+                        <h3 class="card-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"
+                                height="20">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            Importar Tabela NCM
+                        </h3>
+                        <p class="card-desc">Faça upload do arquivo <code>.xls</code> ou <code>.xlsx</code>. Todos os
+                            registros serão substituídos.</p>
+
+                        <div class="drop-zone" id="drop-zone">
+                            <div class="drop-icon">📂</div>
+                            <p class="drop-text">Arraste o arquivo aqui ou <span class="drop-link">clique para
+                                    selecionar</span></p>
+                            <p class="drop-hint">.xls / .xlsx — até 100MB</p>
+                            <input type="file" id="file-input" accept=".xls,.xlsx,.csv" style="display:none" />
+                        </div>
+
+                        <div class="file-preview" id="file-preview" style="display:none">
+                            <div class="file-info">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"
+                                    height="20">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                </svg>
+                                <div>
+                                    <div class="file-name" id="file-name"></div>
+                                    <div class="file-size" id="file-size"></div>
+                                </div>
+                                <button class="btn-icon-sm" id="btn-remove-file" title="Remover">✕</button>
+                            </div>
+                        </div>
+
+                        <div id="upload-progress" style="display:none">
+                            <div class="progress-bar-wrap">
+                                <div class="progress-bar" id="progress-bar"></div>
+                            </div>
+                            <span class="progress-label" id="progress-label">Enviando...</span>
+                        </div>
+
+                        <div id="upload-result" style="display:none"></div>
+
+                        <button class="btn btn-primary btn-full" id="btn-upload" disabled>
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            Confirmar Importação
+                        </button>
+                    </div>
+
+                    <!-- Danger Zone: Limpar Banco -->
+                    <div class="search-card danger-card">
+                        <h3 class="card-title" style="color: var(--error);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6l-1 14H6L5 6"></path>
+                                <path d="M10 11v6M14 11v6"></path>
+                                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+                            </svg>
+                            Zona de Perigo
+                        </h3>
+                        <p class="card-desc">Apaga <strong>todos</strong> os registros NCM do banco. Esta ação é irreversível.</p>
+
+                        <div id="clear-confirm" style="display:none; margin-bottom: 16px;">
+                            <div class="error-card" style="margin-bottom: 12px;">
+                                ⚠️ Tem certeza? Esta ação não pode ser desfeita.
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn btn-full" id="btn-clear-confirm" style="background: var(--error); color: #fff; border-color: var(--error); flex:1">
+                                    Sim, limpar tudo
+                                </button>
+                                <button class="btn btn-ghost btn-full" id="btn-clear-cancel" style="flex:1">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="clear-result" style="display:none; margin-bottom: 12px;"></div>
+
+                        <button class="btn btn-full" id="btn-clear" style="background: rgba(248,81,73,0.1); color: var(--error); border-color: rgba(248,81,73,0.4);">
+                            🗑️ Limpar Banco de Dados
+                        </button>
+                    </div>
+
+                    <!-- Logout -->
+                    <div class="logout-wrap">
+                        <button class="btn btn-ghost btn-sm" id="btn-logout">Sair do painel</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>ClassPro &copy; 2025 — Painel Administrativo</p>
+        </div>
+    </footer>
+
+    <script src="js/admin.js"></script>
+</body>
+
+</html>

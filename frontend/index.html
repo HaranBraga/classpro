@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClassPro — Consulta NCM</title>
+  <meta name="description"
+    content="Consulte a classificação tributária (cClassTrib e CST) de qualquer código NCM de forma rápida e precisa." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- jsPDF + AutoTable para exportação PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container header-inner">
+      <div class="logo">
+        <div class="logo-icon">CP</div>
+        <span class="logo-text">Class<strong>Pro</strong></span>
+      </div>
+      <a href="admin.html" class="btn btn-ghost btn-sm">Painel Admin</a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">🔍 Consulta Tributária</div>
+      <h1 class="hero-title">Consulta de <span class="text-accent">NCM</span></h1>
+      <p class="hero-subtitle">Encontre a classificação tributária (cClassTrib e CST) de qualquer produto pelo código
+        NCM.</p>
+    </div>
+  </section>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="container">
+      <div class="search-card">
+        <!-- Abas -->
+        <div class="tabs">
+          <button class="tab active" data-tab="exact" id="tab-exact">Busca por NCM</button>
+          <button class="tab" data-tab="search" id="tab-search">Busca por Descrição</button>
+          <button class="tab" data-tab="pdf" id="tab-pdf">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"
+              style="margin-right:6px;vertical-align:-2px">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+            Extair NCMs do PDF
+          </button>
+        </div>
+
+        <!-- Busca Exata -->
+        <div class="tab-content active" id="panel-exact">
+          <div class="form-group">
+            <label class="form-label" for="ncm-input">Código NCM</label>
+            <input id="ncm-input" class="form-input" type="text" placeholder="Ex: 76082090" maxlength="10"
+              autocomplete="off" />
+            <span class="form-hint">Digite o código NCM de 4 a 10 dígitos</span>
+          </div>
+          <button class="btn btn-primary btn-full" id="btn-consultar">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            Consultar
+          </button>
+        </div>
+
+        <!-- Busca por Descrição -->
+        <div class="tab-content" id="panel-search">
+          <div class="form-group">
+            <label class="form-label" for="desc-input">Descrição do Produto</label>
+            <input id="desc-input" class="form-input" type="text" placeholder="Ex: alumínio, parafuso, motor..."
+              autocomplete="off" />
+            <span class="form-hint">Mínimo 2 caracteres</span>
+          </div>
+          <button class="btn btn-primary btn-full" id="btn-buscar">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            Buscar
+          </button>
+        </div>
+
+        <!-- Aba PDF -->
+        <div class="tab-content" id="panel-pdf">
+          <p class="form-hint" style="margin-bottom:16px">
+            Faça upload de um PDF com códigos NCM. O sistema irá extrair todos os NCMs encontrados e buscar as
+            classificações tributárias.
+          </p>
+          <!-- Drop zone -->
+          <div class="pdf-dropzone" id="pdf-dropzone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"
+              class="pdf-icon">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <line x1="9" y1="15" x2="15" y2="15" />
+            </svg>
+            <p class="pdf-dropzone-text">Arraste seu PDF aqui ou <span class="pdf-link">clique para selecionar</span>
+            </p>
+            <p class="pdf-dropzone-hint">Máximo 20MB · apenas .pdf</p>
+            <input type="file" id="pdf-file-input" accept="application/pdf" style="display:none" />
+          </div>
+          <div id="pdf-file-name" class="pdf-filename" style="display:none"></div>
+          <button class="btn btn-primary btn-full" id="btn-pdf-extract" style="margin-top:16px" disabled>
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            Extrair e Consultar NCMs
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div class="loading-wrap" id="loading" style="display:none">
+        <div class="spinner"></div>
+        <span id="loading-text">Consultando...</span>
+      </div>
+
+      <!-- Resultado Exato (NCM único) -->
+      <div class="result-card" id="result-card" style="display:none">
+        <div class="result-header">
+          <div class="result-badge" id="res-cclasstrib-badge"></div>
+          <div class="result-status">
+            <span class="status-dot"></span>
+            <span>Encontrado</span>
+          </div>
+        </div>
+        <div class="result-body">
+          <div class="result-row">
+            <span class="result-label">NCM</span>
+            <span class="result-value" id="res-ncm"></span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">Descrição</span>
+            <span class="result-value" id="res-desc"></span>
+          </div>
+          <div id="classificacoes-container"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm btn-copy" id="btn-copy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          Copiar resultado
+        </button>
+      </div>
+
+      <!-- Erro -->
+      <div class="error-card" id="error-card" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span id="error-msg"></span>
+      </div>
+
+      <!-- Resultados de Busca por Descrição -->
+      <div id="search-results" style="display:none">
+        <div class="results-header">
+          <h3 class="results-title">Resultados</h3>
+          <span class="results-count" id="results-count"></span>
+        </div>
+        <div class="results-table-wrap">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>NCM</th>
+                <th>Descrição</th>
+                <th>cClassTrib</th>
+                <th>CST</th>
+                <th>Tributação</th>
+              </tr>
+            </thead>
+            <tbody id="results-tbody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+
+      <!-- Resultados do PDF -->
+      <div id="pdf-results" style="display:none">
+        <div class="results-header">
+          <h3 class="results-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"
+              style="vertical-align:-3px;margin-right:6px">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            NCMs Extraídos do PDF
+          </h3>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="results-count" id="pdf-results-count"></span>
+            <button class="btn btn-ghost btn-sm" id="btn-pdf-csv">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"
+                style="margin-right:4px">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Exportar CSV
+            </button>
+            <button class="btn btn-ghost btn-sm" id="btn-pdf-export">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"
+                style="margin-right:4px">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+              Exportar PDF
+            </button>
+          </div>
+        </div>
+        <div class="results-table-wrap">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>NCM</th>
+                <th>Descrição</th>
+                <th>cClassTrib</th>
+                <th>Desc. cClassTrib</th>
+                <th>CST</th>
+                <th>Tributação</th>
+              </tr>
+            </thead>
+            <tbody id="pdf-results-tbody"></tbody>
+          </table>
+        </div>
+        <div id="pdf-not-found" style="display:none" class="pdf-not-found"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>ClassPro &copy; 2025 — Dados importados conforme tabela oficial</p>
+    </div>
+  </footer>
+
+  <!-- Modal — Detalhes cClassTrib -->
+  <div id="modal-cclasstrib" class="modal-overlay" style="display:none">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>📋</span>
+          <span id="modal-title-text">Detalhes cClassTrib</span>
+        </div>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <div class="loading-wrap">
+          <div class="spinner"></div><span>Carregando...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+
+</html>

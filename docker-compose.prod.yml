@@ -1,0 +1,21 @@
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=3000
+    # A rede padrão do compose já permite que o frontend chame este serviço por 'http://backend:3000'
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
