@@ -24,41 +24,49 @@ function extractNcms(text) {
 
     /**
      * Tenta buscar o nome do item a partir da linha atual e anteriores.
-     * Analisa o padrão real do DANFE.
+     * Analisa múltiplos padrões de ERPs brasileiros.
      */
     function extractItemName(lineIndex, lineContent = '') {
         // Padrão 1: Tudo na mesma linha (Código + Nome + NCM colado)
         // Ex: "001409SACOS KRAFT-IR 35G 7,5 KG C/500UN481940000005.102PC4,00..."
-        // O `lineContent` aqui é tudo ANTES do NCM (ou seja, "001409SACOS KRAFT-IR 35G 7,5 KG C/500UN")
         const mesmaLinhaMatch = lineContent.match(/^(\d{2,14})([A-Za-zÀ-ú].+)/);
         if (mesmaLinhaMatch && mesmaLinhaMatch[2].length > 3) {
             let nome = mesmaLinhaMatch[2].trim();
-            // Remove a unidade de medida que costuma grudar no final do nome antes do NCM (ex: "UN", "PC", "KG", "CX", "FR")
-            nome = nome.replace(/(?:UN|PC|KG|CX|FR|GL|PCT|CJ|LT|MT|M2|M3|PR|RL)$/i, '').trim();
-            // Se ainda terminar com números/vírgulas avulsos, limpa
-            nome = nome.replace(/[\s\d,.-]+$/, '').trim();
-            if (nome.length > 3) return nome.substring(0, 150); 
+            // Evita capturar palavras curtas como ALIQ se o PDF montou errado
+            if (!/^(ALIQ|VALOR|ICMS)/i.test(nome)) {
+                nome = nome.replace(/(?:UN|PC|PEÇ|KG|CX|FR|GL|PCT|CJ|LT|MT|M2|M3|PR|RL)$/i, '').trim();
+                nome = nome.replace(/[\s\d,.-]+$/, '').trim();
+                // Retorna só se sobrar texto útil
+                if (nome.length > 3) return nome.substring(0, 150); 
+            }
         }
 
-        // Padrão 2: Nome na linha acima (quando tem CEST embaixo quebrando a linha antes do NCM)
-        for (let i = lineIndex - 1; i >= Math.max(0, lineIndex - 4); i--) {
+        // Padrão 2: Nome quebrado nas linhas de cima
+        // ERPs como Stihl colocam "CódigoNome" na linha N-2, seguido de "CEST" ou "FCI" na N-1.
+        for (let i = lineIndex - 1; i >= Math.max(0, lineIndex - 6); i--) {
             const l = lines[i].trim();
             if (!l) continue;
 
-            // Ignora lixo de cabeçalho
-            if (/^(CEST|N\s+FCI|NCM|CFOP|CST|PIS|COFINS|IPI|ICMS|UNID|QTD|V\.UNIT|V\.TOTAL|ALIQ|VALOR|BASE|0|1)$/i.test(l)) continue;
+            // Ignora linhas que são só lixo de tabela ou identificadores fáceis
+            if (/^(CEST|NCM|CFOP|CST|PIS|COFINS|IPI|ICMS|UNID|QTD|V\.UNIT|V\.TOTAL|ALIQ|VALOR|BASE|0|1)$/i.test(l)) continue;
+            // Ignora a famigerada linha do FCI (ex: "N  FCI  EBB8F41F 139A 4643 A8A9 D19E29CAC591 CEST:0105100")
+            if (l.includes('FCI') && /[A-F0-9]{4,}/.test(l)) continue;
+            if (/^CEST:\d+/.test(l)) continue;
             
-            // Ex: "000058ESSENCIA AL. 960ML BAUNILHA"
-            const linhaAcimaMatch = l.match(/^\d{2,14}([A-Za-zÀ-ú].+)/);
-            if (linhaAcimaMatch && linhaAcimaMatch[1].length > 3) {
-                 let nome = linhaAcimaMatch[1].trim();
-                 nome = nome.replace(/(?:UN|PC|KG|CX|FR|GL|PCT|CJ|LT|MT|M2|M3|PR|RL)$/i, '').trim();
-                 nome = nome.replace(/[\s\d,.-]+$/, '').trim();
-                 return nome.substring(0, 150);
+            // Ex: "1144-790-1702Tubo do punho" ou "000058ESSENCIA AL. 960ML BAUNILHA"
+            // Suporta códigos hifenizados como 1144-790-1702
+            const linhaAcimaMatch = l.match(/^([\d.-]{2,18})([A-Za-zÀ-ú].+)/);
+            if (linhaAcimaMatch && linhaAcimaMatch[2].length > 3) {
+                 let nome = linhaAcimaMatch[2].trim();
+                 if (!/^(ALIQ|VALOR|ICMS)/i.test(nome)) {
+                     nome = nome.replace(/(?:UN|PC|PEÇ|KG|CX|FR|GL|PCT|CJ|LT|MT|M2|M3|PR|RL)$/i, '').trim();
+                     nome = nome.replace(/[\s\d,.-]+$/, '').trim();
+                     return nome.substring(0, 150);
+                 }
             }
             
-            // Fallback: se for só texto
-            if (/^[A-Za-zÀ-ú]/.test(l) && l.length > 5 && !/^(ALIQ|VALOR|ICMS)/i.test(l)) {
+            // Fallback: se for só texto limpo (ex: "Produto X") sem número de código anexado
+            if (/^[A-Za-zÀ-ú]/.test(l) && l.length > 5 && !/^(ALIQ|VALOR|ICMS|Série|NF-e|DANFE|CHAVE)/i.test(l)) {
                 return l.trim().substring(0, 150);
             }
         }
