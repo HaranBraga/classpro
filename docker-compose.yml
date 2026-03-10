@@ -1,5 +1,5 @@
 services:
-  classpro-backend:
+  backend:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
@@ -17,7 +17,7 @@ services:
       dockerfile: Dockerfile.prod
     restart: unless-stopped
     depends_on:
-      - classpro-backend
+      - backend
     networks:
       - easypanel
 
