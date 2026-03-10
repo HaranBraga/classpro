@@ -14,59 +14,52 @@ const upload = multer({
 });
 
 /**
- * Extrai NCMs do texto de um PDF brasileiro (NF-e, DANFE, relatórios fiscais).
- * Preserva a ORDEM de aparição e captura o nome do item da nota.
- *
- * Padrão real do DANFE observado:
- *   Linha N-2: "1144-790-1702Tubo do punho"   ← código dddd-ddd-dddd colado ao nome
- *   Linha N-1: "CEST:0801900"                  ← opcional
- *   Linha N  : "846791000006.102PEÇ4,00..."    ← NCM colado com CST/CFOP
+ * Extrai NCMs e os nomes dos itens de um PDF de NF-e / DANFE.
  */
 function extractNcms(text) {
-    const found = new Map(); // ncm -> nome_item, preserva ordem de inserção
+    const found = new Map();
 
     const clean = text.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ');
     const lines = clean.split('\n');
 
     /**
-     * Extrai o nome do item a partir da linha em que o NCM foi encontrado.
-     * Procura nas linhas anteriores pelo padrão do código de produto DANFE.
+     * Tenta buscar o nome do item a partir da linha atual e anteriores.
+     * Analisa o padrão real do DANFE.
      */
-    function extractItemName(lineIndex) {
-        // Busca em até 10 linhas para trás
-        for (let i = lineIndex - 1; i >= Math.max(0, lineIndex - 10); i--) {
+    function extractItemName(lineIndex, lineContent = '') {
+        // Padrão 1: Tudo na mesma linha (Código + Nome + NCM colado)
+        // Ex: "001409SACOS KRAFT-IR 35G 7,5 KG C/500UN481940000005.102PC4,00..."
+        // O `lineContent` aqui é tudo ANTES do NCM (ou seja, "001409SACOS KRAFT-IR 35G 7,5 KG C/500UN")
+        const mesmaLinhaMatch = lineContent.match(/^(\d{2,14})([A-Za-zÀ-ú].+)/);
+        if (mesmaLinhaMatch && mesmaLinhaMatch[2].length > 3) {
+            let nome = mesmaLinhaMatch[2].trim();
+            // Remove a unidade de medida que costuma grudar no final do nome antes do NCM (ex: "UN", "PC", "KG", "CX", "FR")
+            nome = nome.replace(/(?:UN|PC|KG|CX|FR|GL|PCT|CJ|LT|MT|M2|M3|PR|RL)$/i, '').trim();
+            // Se ainda terminar com números/vírgulas avulsos, limpa
+            nome = nome.replace(/[\s\d,.-]+$/, '').trim();
+            if (nome.length > 3) return nome.substring(0, 150); 
+        }
+
+        // Padrão 2: Nome na linha acima (quando tem CEST embaixo quebrando a linha antes do NCM)
+        for (let i = lineIndex - 1; i >= Math.max(0, lineIndex - 4); i--) {
             const l = lines[i].trim();
             if (!l) continue;
 
-            // Ignora cabeçalhos clássicos e campos curtos
-            if (/^(CEST|N\s+FCI|NCM|CFOP|CST|PIS|COFINS|IPI|ICMS|UNID|QTD|V\.UNIT|V\.TOTAL|ALIQ|VALOR|BASE)/i.test(l)) continue;
-            if (l.length < 5) continue; // ignora lixo muito curto
-
-            // Padrão principal DANFE: dddd-ddd-ddddNome do Produto
-            // Ex: "1144-790-1702Tubo do punho"
-            const danfeMatch = l.match(/^\d{4}-\d{3}-\d{4}(.+)/);
-            if (danfeMatch) {
-                const nome = danfeMatch[1].trim();
-                // Tira possíveis valores que grudaram no final do nome (ex: "Produto XYZ 10,00 5,00")
-                const limpo = nome.replace(/\s+\d+[:,]\d{2}.*$/, '');
-                if (limpo.length >= 2) return limpo.substring(0, 150);
+            // Ignora lixo de cabeçalho
+            if (/^(CEST|N\s+FCI|NCM|CFOP|CST|PIS|COFINS|IPI|ICMS|UNID|QTD|V\.UNIT|V\.TOTAL|ALIQ|VALOR|BASE|0|1)$/i.test(l)) continue;
+            
+            // Ex: "000058ESSENCIA AL. 960ML BAUNILHA"
+            const linhaAcimaMatch = l.match(/^\d{2,14}([A-Za-zÀ-ú].+)/);
+            if (linhaAcimaMatch && linhaAcimaMatch[1].length > 3) {
+                 let nome = linhaAcimaMatch[1].trim();
+                 nome = nome.replace(/(?:UN|PC|KG|CX|FR|GL|PCT|CJ|LT|MT|M2|M3|PR|RL)$/i, '').trim();
+                 nome = nome.replace(/[\s\d,.-]+$/, '').trim();
+                 return nome.substring(0, 150);
             }
-
-            // Padrão alternativo: código numérico longo + espaço + texto
-            // Ex: "1144790 1702 Tubo do punho"
-            const altMatch = l.match(/^\d{5,14}\s+([A-Za-zÀ-ú].{3,})/);
-            if (altMatch) {
-                const limpo = altMatch[1].trim().replace(/\s+\d+[:,]\d{2}.*$/, '');
-                return limpo.substring(0, 150);
-            }
-
-            // Fallback: Linha que parece ser texto descritivo (tem letras, espaços e não começa com numero/símbolo se for muito curta)
-            if (/^[A-Za-zÀ-ú0-9]/.test(l) && l.length >= 8 && /[A-Za-zÀ-ú]/.test(l)) {
-                // Se for tudo maiúsculo e sem espaço, suspeito de ser cabeçalho/sigla
-                if (!l.includes(' ') && l === l.toUpperCase()) continue;
-                
-                const limpo = l.replace(/\s+\d+[:,]\d{2}.*$/, '');
-                return limpo.substring(0, 150);
+            
+            // Fallback: se for só texto
+            if (/^[A-Za-zÀ-ú]/.test(l) && l.length > 5 && !/^(ALIQ|VALOR|ICMS)/i.test(l)) {
+                return l.trim().substring(0, 150);
             }
         }
         return null;
@@ -74,55 +67,38 @@ function extractNcms(text) {
 
     let m;
 
-    // Estratégia 1: Rótulo explícito "NCM/SH: XXXX.XX.XX"
-    const labeled = /NCM\s*[/\-]?\s*(?:SH)?\s*[:\s]+([0-9]{4}\s*\.?\s*[0-9]{2}\s*\.?\s*[0-9]{0,2})/gi;
-    while ((m = labeled.exec(clean)) !== null) {
-        const digits = m[1].replace(/[^0-9]/g, '');
-        if (digits.length >= 4 && digits.length <= 8) {
-            const ncm = digits.padEnd(8, '0');
-            if (!found.has(ncm)) {
-                const lineIdx = clean.substring(0, m.index).split('\n').length - 1;
-                found.set(ncm, extractItemName(lineIdx));
+    // Estratégia principal do seu DANFE:
+    // A linha é composta por CÓDIGONOME+NCM+CST+CFOP...
+    // Ex: "001409SACOS KRAFT-IR 35G 7,5 KG C/500UN481940000005.102PC4,00..."
+    // Vamos buscar todas as ocorrências de 8 dígitos cercadas por texto
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        // Padrão de 8 dígitos consecutivos parecendo NCM
+        const regexNCM = /(?<![R$%/\d.,])(\d{8})(?!\d)/g;
+        while ((m = regexNCM.exec(line)) !== null) {
+            const digits = m[1];
+            // Valida capítulo realista do SH (01 a 97)
+            const ch = parseInt(digits.substring(0, 2), 10);
+            if (ch >= 1 && ch <= 97) {
+                if (!found.has(digits)) {
+                    // Manda a linha inteira para tentar extrair o nome que vem colado antes
+                    const nome = extractItemName(i, line.substring(0, m.index));
+                    found.set(digits, nome);
+                }
             }
         }
-    }
-
-    // Estratégia 2: Formato pontilhado XXXX.XX.XX
-    const dotted = /\b(\d{4})\.(\d{2})\.(\d{2})\b/g;
-    while ((m = dotted.exec(clean)) !== null) {
-        const digits = m[1] + m[2] + m[3];
-        const firstTwo = parseInt(m[1].substring(0, 2));
-        if (firstTwo <= 97) {
-            if (!found.has(digits)) {
-                const lineIdx = clean.substring(0, m.index).split('\n').length - 1;
-                found.set(digits, extractItemName(lineIdx));
-            }
-        }
-    }
-
-    // Estratégia 3: 8 dígitos consecutivos (capítulo SH 01-97)
-    const eightDigit = /(?<![R$%/\d])(?<!\d)(\d{8})(?!\d)/g;
-    while ((m = eightDigit.exec(clean)) !== null) {
-        const digits = m[1];
-        const ch = parseInt(digits.substring(0, 2), 10);
-        if (ch >= 1 && ch <= 97) {
-            if (!found.has(digits)) {
-                const lineIdx = clean.substring(0, m.index).split('\n').length - 1;
-                found.set(digits, extractItemName(lineIdx));
-            }
-        }
-    }
-
-    // Estratégia 4: NCM colado com CST e CFOP — padrão DANFE
-    // Ex: "846791000006.102PEÇ..." → NCM=84679100
-    const gluedDanfe = /(?<!\d)(\d{8})\d{3,4}[1-7]\.\d{3}/g;
-    while ((m = gluedDanfe.exec(clean)) !== null) {
-        const digits = m[1];
-        const ch = parseInt(digits.substring(0, 2), 10);
-        if (ch >= 1 && ch <= 97) {
-            if (!found.has(digits)) {
-                const lineIdx = clean.substring(0, m.index).split('\n').length - 1;
-                found.set(digits, extractItemName(lineIdx));
+        
+        // Estratégia de fallback: formato pontilhado XXXX.XX.XX
+        const dotted = /\b(\d{4})\.(\d{2})\.(\d{2})\b/g;
+        while ((m = dotted.exec(line)) !== null) {
+            const digits = m[1] + m[2] + m[3];
+            const ch = parseInt(m[1].substring(0, 2), 10);
+            if (ch >= 1 && ch <= 97) {
+                if (!found.has(digits)) {
+                    const nome = extractItemName(i, line.substring(0, m.index));
+                    found.set(digits, nome);
+                }
             }
         }
     }
