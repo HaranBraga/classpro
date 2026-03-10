@@ -9,6 +9,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - PORT=3000
     networks:
+      - internal
       - easypanel
 
   frontend:
@@ -19,8 +20,10 @@ services:
     depends_on:
       - backend
     networks:
-      - easypanel
+      - internal
 
 networks:
+  internal:
+    driver: bridge
   easypanel:
     external: true
