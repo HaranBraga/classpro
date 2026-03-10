@@ -68,21 +68,29 @@ function extractNcms(text) {
     let m;
 
     // Estratégia principal do seu DANFE:
-    // A linha é composta por CÓDIGONOME+NCM+CST+CFOP...
-    // Ex: "001409SACOS KRAFT-IR 35G 7,5 KG C/500UN481940000005.102PC4,00..."
-    // Vamos buscar todas as ocorrências de 8 dígitos cercadas por texto
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         
-        // Padrão de 8 dígitos consecutivos parecendo NCM
-        const regexNCM = /(?<![R$%/\d.,])(\d{8})(?!\d)/g;
-        while ((m = regexNCM.exec(line)) !== null) {
+        // Padrão 1: 8 dígitos consecutivos isolados (não seguidos de outros números)
+        const regexIso = /(?<![R$%/\d.,])(\d{8})(?!\d)/g;
+        while ((m = regexIso.exec(line)) !== null) {
             const digits = m[1];
-            // Valida capítulo realista do SH (01 a 97)
             const ch = parseInt(digits.substring(0, 2), 10);
             if (ch >= 1 && ch <= 97) {
                 if (!found.has(digits)) {
-                    // Manda a linha inteira para tentar extrair o nome que vem colado antes
+                    const nome = extractItemName(i, line.substring(0, m.index));
+                    found.set(digits, nome);
+                }
+            }
+        }
+
+        // Padrão 2: NCM colado com CST e CFOP — padrão DANFE (ex: ...481940000005.102...)
+        const gluedDanfe = /(?<![R$%/\d.,])(\d{8})\d{3,4}[1-7]\.\d{3}/g;
+        while ((m = gluedDanfe.exec(line)) !== null) {
+            const digits = m[1];
+            const ch = parseInt(digits.substring(0, 2), 10);
+            if (ch >= 1 && ch <= 97) {
+                if (!found.has(digits)) {
                     const nome = extractItemName(i, line.substring(0, m.index));
                     found.set(digits, nome);
                 }
