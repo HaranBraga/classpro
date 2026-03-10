@@ -21,6 +21,11 @@ const pdfResults = document.getElementById('pdf-results');
 let currentQuery = '';
 const PAGE_SIZE = 20;
 
+function formatCST(val) {
+    if (val === null || val === undefined || val === '') return '—';
+    return String(val).padStart(3, '0');
+}
+
 // =============================================
 // Tabs
 // =============================================
@@ -95,7 +100,7 @@ function renderSearchResults(data, offset) {
                 <span class="classtrib-badge">${r.cclasstrib}</span>
                 <button class="btn-ver-detalhes" data-code="${r.cclasstrib}" data-desc="${(r.desc_cclasstrib || '').replace(/"/g, '&quot;')}">Ver detalhes</button>
             </td>
-            <td>${r.cst || '—'}</td>
+            <td>${formatCST(r.cst)}</td>
             <td>${r.desc_cst || '—'}</td>
         </tr>
     `).join('');
@@ -142,7 +147,7 @@ function showResult(d) {
             </div>` : ''}
             <div class="result-row">
                 <span class="result-label">CST</span>
-                <span class="result-value">${c.cst || '—'}</span>
+                <span class="result-value">${formatCST(c.cst)}</span>
             </div>
             <div class="result-row">
                 <span class="result-label">Tributação</span>
@@ -291,7 +296,7 @@ function renderPdfResults(data) {
             html += `
                 <td><span class="classtrib-badge">${c.cclasstrib}</span></td>
                 <td class="pdf-desc-cclass">${c.desc_cclasstrib || '—'}</td>
-                <td>${c.cst || '—'}</td>
+                <td>${formatCST(c.cst)}</td>
                 <td>${c.desc_cst || '—'}</td>
             </tr>`;
         });
@@ -323,7 +328,7 @@ document.getElementById('btn-pdf-csv').addEventListener('click', () => {
     for (const item of pdfData.results) {
         for (const c of item.classificacoes) {
             csv += [item.ncm, item.nome_item || '', item.descricao || '',
-            c.cclasstrib, c.desc_cclasstrib || '', c.cst || '', c.desc_cst || '']
+            c.cclasstrib, c.desc_cclasstrib || '', c.cst != null && c.cst !== '' ? String(c.cst).padStart(3, '0') : '', c.desc_cst || '']
                 .map(v => `"${String(v).replace(/"/g, '""')}"`)
                 .join(',') + '\n';
         }
@@ -396,7 +401,7 @@ document.getElementById('btn-pdf-export').addEventListener('click', () => {
                 prodLabel,
                 c.cclasstrib,
                 c.desc_cclasstrib || '—',
-                c.cst || '—',
+                formatCST(c.cst),
                 c.desc_cst || '—',
             ]);
         }
@@ -543,7 +548,7 @@ function renderModal(d, descFromSearch) {
             <div class="modal-section-title">Identificação</div>
             <div class="modal-grid">
                 ${field('cClassTrib', d.cclasstrib)}
-                ${field('Cód. Situação Tributária', d.cod_sit_tributaria)}
+                ${field('Cód. Situação Tributária', d.cod_sit_tributaria != null && d.cod_sit_tributaria !== '' ? String(d.cod_sit_tributaria).padStart(3, '0') : null)}
                 ${field('Tipo de Alíquota', d.tipo_aliquota)}
                 ${field('Nº do Anexo', d.numero_anexo)}
                 <div class="modal-field" style="grid-column:1/-1">
