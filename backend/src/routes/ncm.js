@@ -28,18 +28,38 @@ router.get('/search', async (req, res) => {
         return res.status(400).json({ error: 'Termo de busca deve ter ao menos 2 caracteres' });
     }
     try {
-        const search = `%${q.trim()}%`;
+        // Separa as palavras digitadas pelo usuário para pesquisar de forma independente ("fralda bebe" acha "fralda de bebê")
+        const words = q.trim().split(/\s+/).filter(w => w.length > 0);
+        
+        let conditions = [];
+        let params = [];
+        
+        words.forEach((word, index) => {
+            // Busca obrigatoriamente a "Descrição NCM / NBS" (coluna descricao) e também NCM ou desc_cclasstrib como fallback
+            conditions.push(`(descricao ILIKE $${index + 1} OR ncm ILIKE $${index + 1} OR desc_cclasstrib ILIKE $${index + 1})`);
+            
+            // Remove acentos na javascript se o banco não for tunado, mas como o ILIKE não liga pro acento, mantemos simples:
+            params.push(`%${word}%`);
+        });
+
+        const whereSQL = conditions.join(' AND ');
+        const limitParam = params.length + 1;
+        const offsetParam = params.length + 2;
+        
+        const countParams = [...params];
+        params.push(Math.min(parseInt(limit), 100), parseInt(offset));
+
         const result = await pool.query(
             `SELECT DISTINCT ON (ncm) ncm, descricao, cclasstrib, desc_cclasstrib, cst, desc_cst
              FROM ncm_classificacao
-             WHERE descricao ILIKE $1 OR ncm ILIKE $1
+             WHERE ${whereSQL}
              ORDER BY ncm
-             LIMIT $2 OFFSET $3`,
-            [search, Math.min(parseInt(limit), 100), parseInt(offset)]
+             LIMIT $${limitParam} OFFSET $${offsetParam}`,
+            params
         );
         const total = await pool.query(
-            `SELECT COUNT(DISTINCT ncm) FROM ncm_classificacao WHERE descricao ILIKE $1 OR ncm ILIKE $1`,
-            [search]
+            `SELECT COUNT(DISTINCT ncm) FROM ncm_classificacao WHERE ${whereSQL}`,
+            countParams
         );
         res.json({
             data: result.rows,
