@@ -33,33 +33,40 @@ function extractNcms(text) {
      * Procura nas linhas anteriores pelo padrão do código de produto DANFE.
      */
     function extractItemName(lineIndex) {
-        for (let i = lineIndex - 1; i >= Math.max(0, lineIndex - 8); i--) {
+        // Busca em até 10 linhas para trás
+        for (let i = lineIndex - 1; i >= Math.max(0, lineIndex - 10); i--) {
             const l = lines[i].trim();
             if (!l) continue;
 
-            // Ignora linhas de campos auxiliares
-            if (/^CEST:/i.test(l)) continue;
-            if (/^N\s+FCI\s/i.test(l)) continue;
-            if (/^(NCM|CFOP|CST|PIS|COFINS|IPI|ICMS|UNID|QTD)/i.test(l)) continue;
+            // Ignora cabeçalhos clássicos e campos curtos
+            if (/^(CEST|N\s+FCI|NCM|CFOP|CST|PIS|COFINS|IPI|ICMS|UNID|QTD|V\.UNIT|V\.TOTAL|ALIQ|VALOR|BASE)/i.test(l)) continue;
+            if (l.length < 5) continue; // ignora lixo muito curto
 
-            // Padrão principal DANFE: dddd-ddd-ddddNome
+            // Padrão principal DANFE: dddd-ddd-ddddNome do Produto
             // Ex: "1144-790-1702Tubo do punho"
             const danfeMatch = l.match(/^\d{4}-\d{3}-\d{4}(.+)/);
             if (danfeMatch) {
                 const nome = danfeMatch[1].trim();
-                if (nome.length >= 2) return nome.substring(0, 100);
+                // Tira possíveis valores que grudaram no final do nome (ex: "Produto XYZ 10,00 5,00")
+                const limpo = nome.replace(/\s+\d+[:,]\d{2}.*$/, '');
+                if (limpo.length >= 2) return limpo.substring(0, 150);
             }
 
             // Padrão alternativo: código numérico longo + espaço + texto
             // Ex: "1144790 1702 Tubo do punho"
-            const altMatch = l.match(/^\d{7,13}\s+([A-Za-zÀ-ú].{2,})/);
+            const altMatch = l.match(/^\d{5,14}\s+([A-Za-zÀ-ú].{3,})/);
             if (altMatch) {
-                return altMatch[1].trim().substring(0, 100);
+                const limpo = altMatch[1].trim().replace(/\s+\d+[:,]\d{2}.*$/, '');
+                return limpo.substring(0, 150);
             }
 
-            // Linha que começa com letra (nome puro sem código)
-            if (/^[A-Za-zÀ-ú]/.test(l) && l.length >= 3) {
-                return l.substring(0, 100);
+            // Fallback: Linha que parece ser texto descritivo (tem letras, espaços e não começa com numero/símbolo se for muito curta)
+            if (/^[A-Za-zÀ-ú0-9]/.test(l) && l.length >= 8 && /[A-Za-zÀ-ú]/.test(l)) {
+                // Se for tudo maiúsculo e sem espaço, suspeito de ser cabeçalho/sigla
+                if (!l.includes(' ') && l === l.toUpperCase()) continue;
+                
+                const limpo = l.replace(/\s+\d+[:,]\d{2}.*$/, '');
+                return limpo.substring(0, 150);
             }
         }
         return null;

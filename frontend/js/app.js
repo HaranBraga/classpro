@@ -399,7 +399,7 @@ document.getElementById('btn-pdf-export').addEventListener('click', () => {
     // Uma linha por cClassTrib, repetindo NCM e nome do item
     const tableRows = [];
     for (const item of pdfData.results) {
-        for (const c of item.classificacoes) {
+        item.classificacoes.forEach((c, i) => {
             // Linha 1: nome da nota / linha 2: descrição base do NCM
             let prodLabel = item.nome_item || (item.descricao || '—');
             if (item.nome_item && item.descricao) {
@@ -416,7 +416,7 @@ document.getElementById('btn-pdf-export').addEventListener('click', () => {
                 formatCST(c.cst),
                 c.desc_cst || '—',
             ]);
-        }
+        });
     }
 
     doc.autoTable({
@@ -442,12 +442,12 @@ document.getElementById('btn-pdf-export').addEventListener('click', () => {
             fillColor: rowAlt,
         },
         columnStyles: {
-            0: { cellWidth: 22, fontStyle: 'bold', textColor: accent },
-            1: { cellWidth: 65 },
-            2: { cellWidth: 22, fontStyle: 'bold', textColor: accent },
-            3: { cellWidth: 'auto', overflow: 'linebreak', minCellWidth: 70 },
-            4: { cellWidth: 14 },
-            5: { cellWidth: 60 },
+            0: { cellWidth: 20, fontStyle: 'bold', textColor: accent },
+            1: { cellWidth: 78 },
+            2: { cellWidth: 20, fontStyle: 'bold', textColor: accent },
+            3: { cellWidth: 'auto', overflow: 'linebreak', minCellWidth: 55 },
+            4: { cellWidth: 12 },
+            5: { cellWidth: 50 },
         },
         margin: { left: 14, right: 14 },
         didDrawPage: (d) => {
