@@ -1,5 +1,5 @@
 services:
-  backend:
+  classpro-api:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
@@ -8,9 +8,6 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - PORT=3000
-    networks:
-      - internal
-      - easypanel
 
   frontend:
     build:
@@ -18,12 +15,4 @@ services:
       dockerfile: Dockerfile.prod
     restart: unless-stopped
     depends_on:
-      - backend
-    networks:
-      - internal
-
-networks:
-  internal:
-    driver: bridge
-  easypanel:
-    external: true
+      - classpro-api
