@@ -288,10 +288,18 @@ function renderPdfResults(data) {
         cls.forEach((c, i) => {
             html += `<tr${i === 0 ? ' class="pdf-row-first"' : ''}>`;
             if (i === 0) {
+                const multiBadge = cls.length > 1 ? `<div class="multi-badge">${cls.length} Classificações</div>` : '';
+                const baseDesc = item.descricao ? `<small style="opacity:.7;display:block;margin-top:4px">NCM Base: ${item.descricao}</small>` : '';
+                const mainName = item.nome_item ? `<strong>${item.nome_item}</strong>` : `<strong>${item.descricao || 'Item sem nome'}</strong>`;
+
                 html += `<td rowspan="${cls.length}" class="pdf-ncm-cell">
-                    <span class="ncm-code">${item.ncm}</span>
+                    <span class="ncm-code" style="margin-bottom:8px">${item.ncm}</span>
+                    ${multiBadge}
                 </td>
-                <td rowspan="${cls.length}" class="pdf-desc-cell">${item.nome_item ? `<strong>${item.nome_item}</strong><br><small style="opacity:.7">${item.descricao || ''}</small>` : (item.descricao || '—')}</td>`;
+                <td rowspan="${cls.length}" class="pdf-desc-cell">
+                    ${mainName}
+                    ${item.nome_item ? baseDesc : ''}
+                </td>`;
             }
             html += `
                 <td><span class="classtrib-badge">${c.cclasstrib}</span></td>
@@ -392,10 +400,14 @@ document.getElementById('btn-pdf-export').addEventListener('click', () => {
     const tableRows = [];
     for (const item of pdfData.results) {
         for (const c of item.classificacoes) {
-            // Linha 1: nome da nota / linha 2: descrição do NCM
-            const prodLabel = item.nome_item
-                ? item.nome_item + (item.descricao ? '\n(' + item.descricao + ')' : '')
-                : (item.descricao || '—');
+            // Linha 1: nome da nota / linha 2: descrição base do NCM
+            let prodLabel = item.nome_item || (item.descricao || '—');
+            if (item.nome_item && item.descricao) {
+                 prodLabel += `\n(NCM Base: ${item.descricao})`;
+            }
+            if (item.classificacoes.length > 1 && i === 0) {
+                 prodLabel = `[⚠️ ATENÇÃO: ${item.classificacoes.length} CLASSIFICAÇÕES POSSÍVEIS]\n${prodLabel}`;
+            }
             tableRows.push([
                 item.ncm,
                 prodLabel,
