@@ -65,7 +65,8 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
     try {
         const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
-        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '', raw: false });
+
 
         if (rows.length === 0) {
             return res.status(400).json({ error: 'Planilha vazia ou sem dados' });
@@ -111,12 +112,8 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
 
             for (const row of rows) {
                 let rawNcm = row[colNcm];
-                let ncm;
-                if (typeof rawNcm === 'number') {
-                    ncm = rawNcm !== 0 ? String(Math.round(rawNcm)) : '';
-                } else {
-                    ncm = String(rawNcm || '').trim().replace(/[^0-9]/g, '');
-                }
+                let ncm = String(rawNcm || '').trim().replace(/[^0-9]/g, '');
+
 
                 if (ncm && ncm !== '0') {
                     lastNcm = ncm;
@@ -159,7 +156,8 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
             let ops2count = 0;
             const sheet2 = workbook.Sheets[workbook.SheetNames[1]];
             if (sheet2) {
-                const rows2 = XLSX.utils.sheet_to_json(sheet2, { defval: '' });
+                const rows2 = XLSX.utils.sheet_to_json(sheet2, { defval: '', raw: false });
+
                 const n = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\/\-_.]/g, '');
                 const keys2 = rows2[0] ? Object.keys(rows2[0]) : [];
                 const k2 = keys2.map(n);
